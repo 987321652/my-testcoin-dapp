@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TestCoin DApp - 工作版本</title>
+    <!-- 修复CSP问题：移除内联脚本，使用外部CSS -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .header {
+            text-align: center;
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+            transition: background-color 0.3s;
+        }
+        .btn:hover { background-color: #0056b3; }
+        .btn:disabled { background-color: #6c757d; cursor: not-allowed; }
+        .btn-success { background-color: #28a745; }
+        .btn-danger { background-color: #dc3545; }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        .status-success { background-color: #d4edda; color: #155724; }
+        .status-error { background-color: #f8d7da; color: #721c24; }
+        .status-info { background-color: #d1ecf1; color: #0c5460; }
+        .balance-display {
+            background-color: #e8f5e8;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .balance-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #28a745;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .feature-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #dee2e6;
+        }
+    </style>
+    <!-- 使用来自CDN的web3.js，避免CSP问题 -->
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.8.0/dist/web3.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏦 TestCoin DApp - 修复版</h1>
+            <p>解决CSP问题，确保所有功能正常工作</p></div>
+
+        <div class="container">
+            <h2>💳 钱包管理</h2>
+            <button class="btn" onclick="connectWallet()">连接钱包</button>
+            <div id="walletStatus" class="status status-info">未连接</div>
+            <p><strong>地址：</strong><span id="walletAddress">--</span></p>
+        </div>
+
+        <div class="container balance-display">
+            <h2>💰 账户余额</h2>
+            <div class="feature-grid">
+                <div class="feature-item">
+                    <h3>TestCoin (TST)</h3>
+                    <div id="tokenBalance" class="balance-value">--</div>
+                </div>
+                <div class="feature-item">
+                    <h3>BNB Gas费</h3>
+                    <div id="bnbBalance" class="balance-value">--</div>
+                </div>
+            </div>
+            <button class="btn btn-success" onclick="loadBalances()">🔄 刷新余额</button>
+        </div>
+
+        <div class="container">
+            <h2>💸 代币转账测试</h2>
+            <div id="transferStatus" class="status status-info">准备就绪</div>
+            
+            <div>
+                <label>接收地址:</label>
+                <input type="text" id="recipientAddress" placeholder="0x..." value="0x7008f99C959fa782FE06D267c98D16847923dCc9">
+            </div>
+            
+            <div>
+                <label>转账数量 (TST):</label>
+
+                <input type="number" id="transferAmount" placeholder="100" value="100">
+            </div>
+            
+            <button class="btn" onclick="transferTokens()">🔄 转账 TestCoin</button>
+        </div>
+
+        <div class="container">
+            <h2>🔒 质押挖矿测试</h2>
+            
+            <div id="stakingInfo" class="status status-success" style="display:none;">
+                <h3>📊 当前质押状态</h3>
+                <p><strong>质押数量：</strong><span id="stakingAmount">0</span> TST</p>
+                <p><strong>锁定天数：</strong><span id="stakingDays">0</span> 天</p>
+                <p><strong>可领取奖励：</strong><span id="stakingRewards">0</span> TST</p>
+            </div>
+            
+            <div>
+                <label>质押数量 (TST):</label>
+                <input type="number" id="stakeAmount" placeholder="1000" value="1000">
+            </div>
+            
+            <div>
+                <label>锁定期限 (天) - 建议30天:</label>
+                <input type="number" id="lockDays" placeholder="30" value="30" min="1" max="365">
+            </div>
+            
+            <div style="text-align: center;">
+                <button class="btn btn-success" onclick="stakeTokens()">⛏️ 开始质押</button>
+                <button class="btn" onclick="claimRewards()" style="display:none;">🎁 领取奖励</button>
+                <button class="btn btn-danger" onclick="unstakeTokens()" style="display:none;">🔓 解除质押</button>
+            </div>
+            
+            <div class="status status-info">
+                <strong>📈 质押收益说明：</strong><br>
+                • 年化收益率：<strong>10%</strong><br>
+                • 奖励计算公式：日收益 = 质押数量 × 10% ÷ 365<br>
+                • 可以随时增加质押<br>
+                • 锁定期内不能解除质押
+            </div>
+        </div>
+
+        <div class="container">
+            <h2>📋 合约和网络信息</h2>
+            <div class="feature-grid">
+                <div class="feature-item">
+                    <strong>合约地址</strong><br>
+                    <small>0xB0eeD26aE6F65aBa165BCBF0229568959f968A7B</small>
+                </div>
+                <div class="feature-item">
+                    <strong>区块链网络</strong><br>
+                    BNB Smart Chain Testnet
+                </div>
+                <div class="feature-item">
+                    <strong>代币符号</strong><br>
+                    TST
+                </div>
+                <div class="feature-item">
+                    <strong>您的预期余额</strong><br>
+                    10,000,000 TST
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 外部JavaScript文件，避免CSP问题 -->
+    <script src="app_working.js"></script>
+</body>
+</html>
