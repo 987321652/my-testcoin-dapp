@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TestCoin DApp - CSP修复版</title>
+    <!-- 指定CSP策略，允许必要的脚本执行 -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net;">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .section {
+            padding: 30px;
+            border-bottom: 1px solid #eee;
+        }
+        .section:last-child {
+            border-bottom: none;
+        }
+        .btn {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 10px 5px;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        .btn-danger { background: linear-gradient(135deg, #dc3545, #c82333); }
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-weight: 600;
+            text-align: center;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        .wallet-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-family: monospace;
+            word-break: break-all;
+        }
+        .balance-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        .balance-row {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+        .balance-item {
+            background: rgba(255,255,255,0.2);
+            padding: 20px;
+            border-radius: 10px;
+            flex: 1;
+            margin: 0 10px;
+        }
+        .balance-label {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        .balance-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .input-group {
+            margin: 20px 0;
+        }
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        .input-group input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .feature-item {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+        }
+        .title {
+            font-size: 24px;
+            margin-bottom: 10px;
+            text-align: center;
+            color: #333;
+        }
+        .subtitle {
+            font-size: 16px;
+            opacity: 0.8;
+            margin-bottom: 20px;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.8.0/dist/web3.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏦 TestCoin DApp - 专业版</h1>
+            <p>基于BNB Smart Chain的DeFi质押平台</p>
+        </div>
+
+        <div class="section">
+            <div class="title">💳 钱包管理</div>
+            <button class="btn" onclick="connectWallet()">连接钱包</button>
+            <div id="status" class="status info">准备连接</div>
+            
+            <div id="walletInfo" class="wallet-info" style="display:none;">
+                <strong>已连接地址：</strong><br>
+                <span id="walletAddress"></span>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="title">💰 账户余额</div>
+            <div id="balanceCard" class="balance-card" style="display:none;">
+                <div class="balance-row">
+                    <div class="balance-item">
+                        <div class="balance-label">TestCoin (TST)</div>
+                        <div id="tstBalance" class="balance-value">--</div>
+                    </div>
+                    <div class="balance-item">
+                        <div class="balance-label">BNB (Gas费用)</div>
+                        <div id="bnbBalance" class="balance-value">--</div>
+                    </div>
+                </div>
+            </div>
+            <button class="btn" onclick="loadBalances()">🔄 刷新余额</button>
+        </div>
+
+        <div class="section">
+            <div class="title">💸 代币转账</div>
+            <div class="input-group">
+                <label>接收地址</label>
+                <input type="text" id="recipientAddress" placeholder="0x..." value="0x7008f99C959fa782FE06D267c98D16847923dCc9">
+            </div>
+            <div class="input-group">
+                <label>转账数量 (TST)</label>
+                <input type="number" id="transferAmount" placeholder="100" value="100">
+            </div>
+            <button class="btn" onclick="transferTokens()">🔄 转账 TestCoin</button>
+        </div>
+
+        <div class="section">
+            <div class="title">🔒 质押挖矿</div>
+            
+            <div id="stakingInfo" class="status success" style="display:none;">
+                <h3>📊 当前质押状态</h3>
+                <div class="balance-row">
+                    <div class="balance-item">
+                        <div class="balance-label">质押数量</div>
+                        <div id="stakingAmount" class="balance-value">0</div>
+                    </div>
+                    <div class="balance-item">
+                        <div class="balance-label">可领取奖励</div>
+                        <div id="stakingRewards" class="balance-value">0</div>
+                    </div>
+                </div>
+                <button class="btn" onclick="claimRewards()">🎁 领取奖励</button>
+                <button class="btn btn-danger" onclick="unstakeTokens()">🔓 解除质押</button>
+            </div>
+            
+            <div class="input-group">
+                <label>质押数量 (TST)</label>
+                <input type="number" id="stakeAmount" placeholder="1000" value="1000">
+            </div>
+            <div class="input-group">
+                <label>锁定期限 (天)</label>
+                <input type="number" id="lockDays" placeholder="30" value="30" min="1" max="365">
+            </div>
+            <button class="btn" onclick="stakeTokens()">⛏️ 开始质押</button>
+            
+            <div class="status info">
+                <strong>📈 质押收益说明：</strong><br>
+                • 年化收益率：10%<br>
+                • 最小锁定期：1天<br>
+                • 可以随时领取奖励<br>
+                • 锁定期内可增加质押
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="title">📋 合约信息</div>
+            <div class="feature-grid">
+                <div class="feature-item">
+                    <strong>合约地址</strong><br>
+                    <small>0xB0eeD26aE6F65aBa165BCBF0229568959f968A7B</small>
+                </div>
+                <div class="feature-item">
+                    <strong>区块链网络</strong><br>
+                    BNB Smart Chain Testnet
+                </div>
+                <div class="feature-item">
+                    <strong>代币符号</strong><br>
+                    TST
+                </div>
+                <div class="feature-item">
+                    <strong>预期余额</strong><br>
+                    10,000,000 TST
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // CSP修复版本的JavaScript代码 - 避免使用eval()
+        
+        // 配置
+        const CONTRACT_ADDRESS = "0xB0eeD26aE6F65aBa165BCBF0229568959f968A7B";
+        const REQUIRED_NETWORK_ID = 97; // BNB Smart Chain Testnet
+        
+        // 简化的ABI - 只包含我们需要的方法
+        const CONTRACT_ABI = [
+            {"inputs": [], "name": "name", "outputs": [{"type": "string"}], "stateMutability": "view", "type": "function"},
+            {"inputs": [], "name": "symbol", "outputs": [{"type": "string"}], "stateMutability": "view", "type": "function"},
+            {"inputs": [{"name": "account", "type": "address"}], "name": "balanceOf", "outputs": [{"type": "uint256"}], "stateMutability": "view", "type": "function"},
+            {"inputs": [{"name": "to", "type": "address"}, {"name": "amount", "type": "uint256"}], "name": "transfer", "outputs": [{"type": "bool"}], "stateMutability": "nonpayable", "type": "function"},
+            {"inputs": [{"name": "amount", "type": "uint256"}, {"name": "lockPeriodSeconds", "type": "uint256"}], "name": "stake", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
+            {"inputs": [], "name": "unstake", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
+            {"inputs": [], "name": "claimRewards", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
+            {"inputs": [{"name": "user", "type": "address"}], "name": "getUserStakingInfo", "outputs": [{"name": "amount", "type": "uint256"}, {"name": "startTime", "type": "uint256"}, {"name": "lockPeriod", "type": "uint256"}, {"name": "isActive", "type": "bool"}, {"name": "rewards", "type": "uint256"}], "stateMutability": "view", "type": "function"}
+        ];
+
+        // 全局变量
+        let web3 = null;
+        let contract = null;
+        let userAddress = null;
+        let currentNetwork = null;
+
+        // 工具函数
+        function updateStatus(message, type) {
+            const statusElement = document.getElementById('status');
+            statusElement.textContent = message;
+            statusElement.className = 'status ' + type;
+            console.log('[' + type.toUpperCase() + '] ' + message);
+        }
+
+        function formatTokens(weiAmount) {
+            if (!web3 || !weiAmount) return '0';
+            try {
+                return web3.utils.fromWei(weiAmount.toString(), 'ether');
+            } catch (error) {
+                console.error('格式化代币失败:', error);
+                return '0';
+            }
+        }
+
+        function toWei(tokenAmount) {
+            if (!web3 || !tokenAmount) return '0';
+            try {
+                return web3.utils.toWei(tokenAmount.toString(), 'ether');
+            } catch (error) {
+                console.error('转换为Wei失败:', error);
+                return '0';
+            }
+        }
+
+        // 连接钱包
+        async function connectWallet() {
+            try {
+                console.log('开始连接钱包...');
+                updateStatus('正在连接钱包...', 'info');
+
+                // 检查MetaMask
+                if (typeof window.ethereum === 'undefined') {
+                    throw new Error('请安装MetaMask钱包！');
+                }
+
+                // 初始化web3
+                web3 = new Web3(window.ethereum);
+
+                // 请求账户访问
+                const accounts = await window.ethereum.request({ 
+                    method: 'eth_requestAccounts' 
+                });
+
+                if (!accounts || accounts.length === 0) {
+                    throw new Error('没有可用的钱包账户');
+                }
+
+                userAddress = accounts[0];
+                console.log('用户地址:', userAddress);
+
+                // 检查网络
+                currentNetwork = await web3.eth.net.getId();
+                console.log('当前网络ID:', currentNetwork);
+
+                if (currentNetwork !== REQUIRED_NETWORK_ID) {
+                    updateStatus('请切换到BNB Smart Chain Testnet！当前: ' + currentNetwork, 'error');
+                    return;
+                }
+
+                // 初始化合约
+                console.log('初始化合约:', CONTRACT_ADDRESS);
+                contract = new web3.eth.Contract(CONTRACT_ABI, CONTRACT_ADDRESS);
+
+                // 测试合约连接
+                const name = await contract.methods.name().call();
+                const symbol = await contract.methods.symbol().call();
+                
+                console.log('合约信息:', { name, symbol });
+
+                // 更新UI
+                document.getElementById('walletAddress').textContent = userAddress;
+                document.getElementById('walletInfo').style.display = 'block';
+                document.getElementById('balanceCard').style.display = 'block';
+                
+                updateStatus('成功连接 ' + name + ' (' + symbol + ')', 'success');
+
+                // 自动加载余额
+                await loadBalances();
+                await loadStakingInfo();
+
+            } catch (error) {
+                console.error('连接钱包失败:', error);
+                let errorMessage = '连接失败: ' + error.message;
+                
+                if (error.message.includes('User rejected') || error.message.includes('denied')) {
+                    errorMessage = '请允许网站访问您的MetaMask钱包';
+                }
+                
+                updateStatus(errorMessage, 'error');
+            }
+        }
+
+        // 加载余额
+        async function loadBalances() {
+            if (!contract || !userAddress) {
+                updateStatus('请先连接钱包', 'error');
+                return;
+            }
+
+            try {
+                updateStatus('正在加载余额...', 'info');
+                
+                // 并行获取余额
+                const [bnbWei, tokenWei] = await Promise.all([
+                    web3.eth.getBalance(userAddress),
+                    contract.methods.balanceOf(userAddress).call()
+                ]);
+                
+                const bnbBalance = parseFloat(formatTokens(bnbWei)).toFixed(4);
+                const tokenBalance = parseFloat(formatTokens(tokenWei)).toFixed(2);
+                
+                // 更新显示
+                document.getElementById('bnbBalance').textContent = bnbBalance + ' BNB';
+                document.getElementById('tstBalance').textContent = tokenBalance + ' TST';
+                
+                updateStatus('余额加载完成: ' + tokenBalance + ' TST', 'success');
+                
+            } catch (error) {
+                console.error('加载余额失败:', error);
+                updateStatus('加载余额失败: ' + error.message, 'error');
+            }
+        }
+
+        // 加载质押信息
+        async function loadStakingInfo() {
+            if (!contract || !userAddress) return;
+
+            try {
+                const stakingInfo = await contract.methods.getUserStakingInfo(userAddress).call();
+                
+                const stakingElement = document.getElementById('stakingInfo');
+                
+                if (stakingInfo.isActive) {
+                    const stakingAmount = parseFloat(formatTokens(stakingInfo.amount)).toFixed(2);
+                    const rewards = parseFloat(formatTokens(stakingInfo.rewards)).toFixed(4);
+                    
+                    document.getElementById('stakingAmount').textContent = stakingAmount + ' TST';
+                    document.getElementById('stakingRewards').textContent = rewards + ' TST';
+                    
+                    stakingElement.style.display = 'block';
+                    
+                    updateStatus('质押信息: ' + stakingAmount + ' TST 质押中', 'success');
+                } else {
+                    stakingElement.style.display = 'none';
+                }
+                
+            } catch (error) {
+                console.error('加载质押信息失败:', error);
+                document.getElementById('stakingInfo').style.display = 'none';
+            }
+        }
+
+        // 转账功能
+        async function transferTokens() {
+            if (!contract || !userAddress) {
+                updateStatus('请先连接钱包', 'error');
+                return;
+            }
+
+            const recipient = document.getElementById('recipientAddress').value.trim();
+            const amount = document.getElementById('transferAmount').value.trim();
+
+            if (!recipient || !amount || parseFloat(amount) <= 0) {
+                updateStatus('请输入有效的转账信息', 'error');
+                return;
+            }
+
+            try {
+                updateStatus('正在处理转账...', 'info');
+                
+                const weiAmount = toWei(amount);
+                const tx = await contract.methods.transfer(recipient, weiAmount).send({
+                    from: userAddress,
+                    gas: 100000
+                });
+                
+                updateStatus('转账成功！交易: ' + tx.transactionHash.substring(0, 10) + '...', 'success');
+                
+                setTimeout(() => loadBalances(), 3000);
+                
+            } catch (error) {
+                console.error('转账失败:', error);
+                updateStatus('转账失败: ' + error.message, 'error');
+            }
+        }
+
+        // 质押功能
+        async function stakeTokens() {
+            if (!contract || !userAddress) {
+                updateStatus('请先连接钱包', 'error');
+                return;
+            }
+
+            const amount = document.getElementById('stakeAmount').value.trim();
+            const lockDays = document.getElementById('lockDays').value.trim();
+
+            if (!amount || !lockDays || parseFloat(amount) <= 0) {
+                updateStatus('请输入有效的质押信息', 'error');
+                return;
+            }
+
+            try {
+                updateStatus('正在处理质押...', 'info');
+                
+                const lockSeconds = parseInt(lockDays) * 24 * 60 * 60;
+                const weiAmount = toWei(amount);
+                
+                const tx = await contract.methods.stake(weiAmount, lockSeconds).send({
+                    from: userAddress,
+                    gas: 200000
+                });
+                
+                updateStatus('质押成功！交易: ' + tx.transactionHash.substring(0, 10) + '...', 'success');
+                
+                setTimeout(() => {
+                    loadBalances();
+                    loadStakingInfo();
+                }, 3000);
+                
+            } catch (error) {
+                console.error('质押失败:', error);
+                updateStatus('质押失败: ' + error.message, 'error');
+            }
+        }
+
+        // 领取奖励
+        async function claimRewards() {
+            if (!contract || !userAddress) {
+                updateStatus('请先连接钱包', 'error');
+                return;
+            }
+
+            try {
+                updateStatus('正在领取奖励...', 'info');
+                
+                const tx = await contract.methods.claimRewards().send({
+                    from: userAddress,
+                    gas: 100000
+                });
+                
+                updateStatus('奖励领取成功！', 'success');
+                
+                setTimeout(() => {
+                    loadBalances();
+                    loadStakingInfo();
+                }, 3000);
+                
+            } catch (error) {
+                console.error('领取奖励失败:', error);
+                updateStatus('领取奖励失败: ' + error.message, 'error');
+            }
+        }
+
+        // 解除质押
+        async function unstakeTokens() {
+            if (!contract || !userAddress) {
+                updateStatus('请先连接钱包', 'error');
+                return;
+            }
+
+            try {
+                updateStatus('正在解除质押...', 'info');
+                
+                const tx = await contract.methods.unstake().send({
+                    from: userAddress,
+                    gas: 200000
+                });
+                
+                updateStatus('解除质押成功！', 'success');
+                
+                setTimeout(() => {
+                    loadBalances();
+                    loadStakingInfo();
+                }, 3000);
+                
+            } catch (error) {
+                console.error('解除质押失败:', error);
+                updateStatus('解除质押失败: ' + error.message, 'error');
+            }
+        }
+
+        // 页面初始化
+        window.addEventListener('load', function() {
+            console.log('页面加载完成');
+            
+            if (typeof window.ethereum === 'undefined') {
+                updateStatus('请安装MetaMask钱包扩展', 'error');
+            } else {
+                updateStatus('准备就绪，请连接钱包开始使用', 'info');
+            }
+        });
+    </script>
+</body>
+</html>
