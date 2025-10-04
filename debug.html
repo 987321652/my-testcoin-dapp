@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TestCoin Debug - 简单测试版</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.8.0/dist/web3.min.js"></script>
+</head>
+<body>
+    <h1>TestCoin DApp - 调试版本</h1>
+    
+    <div>
+        <h2>连接钱包</h2>
+        <button id="connectWallet">连接钱包</button>
+        <p id="walletStatus">未连接</p>
+    </div>
+    
+    <div>
+        <h2>合约测试</h2>
+        <button id="testContract">测试合约</button>
+        <p id="contractStatus">未测试</p>
+    </div>
+    
+    <div>
+        <h2>余额</h2>
+        <button id="getBalance">获取余额</button>
+        <p id="balanceStatus">未知</p>
+    </div>
+    
+    <div>
+        <h2>转账测试</h2>
+        <input type="text" id="recipientAddress" placeholder="接收地址" value="0x7008f99C959fa782FE06D267c98D16847923dCc9">
+        <input type="number" id="transferAmount" placeholder="转账数量" value="100">
+        <button id="transferTokens">转账</button>
+        <p id="transferStatus">未测试</p>
+    </div>
+
+    <script>
+        // 合约配置
+        const contractAddress = "0xB0eeD26aE6F65aBa165BCBF0229568959f968A7B";
+        let web3;
+        let contract;
+        let userAddress;
+
+        // 简化的ABI（只包含我们需要的方法）
+        const contractABI = [
+            {
+                "inputs": [],
+                "name": "name",
+                "outputs": [{"internalType": "string", "name": "", "type": "string"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"internalType": "address", "name": "account", "type": "address"}],
+                "name": "balanceOf",
+                "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"internalType": "address", "name": "to", "type": "address"},
+                          {"internalType": "uint256", "name": "amount", "type": "uint256"}],
+                "name": "transfer",
+                "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            }
+        ];
+
+        async function connectWallet() {
+            if (typeof window.ethereum !== 'undefined') {
+                try {
+                    web3 = new Web3(window.ethereum);
+                    await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    const accounts = await web3.eth.getAccounts();
+                    userAddress = accounts[0];
+                    
+                    document.getElementById('walletStatus').textContent = `已连接: ${userAddress}`;
+                    document.getElementById('connectWallet').textContent = '钱包已连接';
+                    
+                    // 自动测试合约
+                    await testContract();
+                    
+                } catch (error) {
+                    document.getElementById('walletStatus').textContent = `连接失败: ${error.message}`;
+                }
+            } else {
+                document.getElementById('walletStatus').textContent = '请安装MetaMask';
+            }
+        }
+
+        async function testContract() {
+            if (!web3 || !userAddress) {
+                document.getElementById('contractStatus').textContent = '请先连接钱包';
+                return;
+            }
+
+            try {
+                // 检查网络
+                const networkId = await web3.eth.net.getId();
+                if (networkId !== 97) {
+                    document.getElementById('contractStatus').textContent = `错误网络! 当前: ${networkId}, 需要: 97`;
+                    return;
+                }
+
+                // 初始化合约
+                contract = new web3.eth.Contract(contractABI, contractAddress);
+                
+                // 测试合约连接
+                const name = await contract.methods.name().call();
+                document.getElementById('contractStatus').textContent = `合约正常: ${name}`;
+                
+                // 自动获取余额
+                await getBalance();
+                
+            } catch (error) {
+                document.getElementById('contractStatus').textContent = `合约错误: ${error.message}`;
+            }
+        }
+
+        async function getBalance() {
+            if (!contract || !userAddress) {
+                document.getElementById('balanceStatus').textContent = '请先测试合约';
+                return;
+            }
+
+            try {
+                const balanceWei = await contract.methods.balanceOf(userAddress).call();
+                const balanceTST = web3.utils.fromWei(balanceWei, 'ether');
+                document.getElementById('balanceStatus').textContent = `${balanceTST} TST`;
+            } catch (error) {
+                document.getElementById('balanceStatus').textContent = `余额错误: ${error.message}`;
+            }
+        }
+
+        async function transferTokens() {
+            if (!contract || !userAddress) {
+                document.getElementById('transferStatus').textContent = '请先连接和测试合约';
+                return;
+            }
+
+            const recipient = document.getElementById('recipientAddress').value;
+            const amount = document.getElementById('transferAmount').value;
+
+            try {
+                const weiAmount = web3.utils.toWei(amount, 'ether');
+                
+                const tx = await contract.methods.transfer(recipient, weiAmount).send({
+                    from: userAddress,
+                    gas: 200000
+                });
+                
+                document.getElementById('transferStatus').textContent = `转账成功: ${tx.transactionHash}`;
+                
+                // 刷新余额
+                setTimeout(getBalance, 2000);
+                
+            } catch (error) {
+                document.getElementById('transferStatus').textContent = `转账失败: ${error.message}`;
+            }
+        }
+
+        // 绑定事件
+        document.getElementById('connectWallet').addEventListener('click', connectWallet);
+        document.getElementById('testContract').addEventListener('click', testContract);
+        document.getElementById('getBalance').addEventListener('click', getBalance);
+        document.getElementById('transferTokens').addEventListener('click', transferTokens);
+    </script>
+</body>
+</html>
