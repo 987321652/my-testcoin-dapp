@@ -3,233 +3,169 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的测试DApp - TestCoin</title>
+    <title>TestCoin Debug - 简单测试版</title>
     <script src="https://cdn.jsdelivr.net/npm/web3@1.8.0/dist/web3.min.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            background-color: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-        .header {
-            text-align: center;
-            color: #333;
-            border-bottom: 2px solid #007bff;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
-        }
-        .wallet-section {
-            background-color: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-        .wallet-info {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        .connected-address {
-            font-family: monospace;
-            font-size: 14px;
-            word-break: break-all;
-            background-color: white;
-            padding: 10px;
-            border-radius: 5px;
-            border: 1px solid #ddd;
-        }
-        .balance-info {
-            background-color: #e8f5e8;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-        }
-        .balance-value {
-            font-size: 24px;
-            font-weight: bold;
-            color: #28a745;
-        }
-        .button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            margin: 5px;
-            transition: background-color 0.3s;
-        }
-        .button:hover {
-            background-color: #0056b3;
-        }
-        .button:disabled {
-            background-color: #6c757d;
-            cursor: not-allowed;
-        }
-        .button.danger {
-            background-color: #dc3545;
-        }
-        .button.danger:hover {
-            background-color: #c82333;
-        }
-        .input-group {
-            margin-bottom: 15px;
-        }
-        .input-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        .input-group input {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 16px;
-            box-sizing: border-box;
-        }
-        .section-title {
-            font-size: 20px;
-            font-weight:-bold;
-            color: #333;
-            margin-bottom: 15px;
-            border-left: 4px solid #007bff;
-            padding-left: 10px;
-        }
-        .staking-info {
-            background-color: #fff3cd;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-        }
-        .staking-info.hidden {
-            display: none;
-        }
-        .status-message {
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 15px;
-        }
-        .status-message.success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        .status-message.error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        .status-message.info {
-            background-color: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-    </style>
 </head>
 <body>
-    <div class="header">
-        <h1>🏦 我的测试DApp</h1>
-        <p>TestCoin (TST) - 代币质押平台</p>
+    <h1>TestCoin DApp - 调试版本</h1>
+    
+    <div>
+        <h2>连接钱包</h2>
+        <button id="connectWallet">连接钱包</button>
+        <p id="walletStatus">未连接</p>
+    </div>
+    
+    <div>
+        <h2>合约测试</h2>
+        <button id="testContract">测试合约</button>
+        <p id="contractStatus">未测试</p>
+    </div>
+    
+    <div>
+        <h2>余额</h2>
+        <button id="getBalance">获取余额</button>
+        <p id="balanceStatus">未知</p>
+    </div>
+    
+    <div>
+        <h2>转账测试</h2>
+        <input type="text" id="recipientAddress" placeholder="接收地址" value="0x7008f99C959fa782FE06D267c98D16847923dCc9">
+        <input type="number" id="transferAmount" placeholder="转账数量" value="100">
+        <button id="transferTokens">转账</button>
+        <p id="transferStatus">未测试</p>
     </div>
 
-    <!-- 钱包连接区域 -->
-    <div class="container wallet-section">
-        <h3 class="section-title">💰 钱包管理</h3>
-        <div class="wallet-info">
-            <button id="connectWallet" class="button">连接钱包</button>
-            <div id="walletStatus">未连接</div>
-        </div>
-        <div id="walletAddressDisplay" style="display: none;">
-            <label for="connectedAddress">已连接地址:</label>
-            <div id="connectedAddress" class="connected-address"></div>
-        </div>
-    </div>
+    <script>
+        // 合约配置
+        const contractAddress = "0xB0eeD26aE6F65aBa165BCBF0229568959f968A7B";
+        let web3;
+        let contract;
+        let userAddress;
 
-    <!-- 余额显示区域 -->
-    <div class="container">
-        <h3 class="section-title">💳 账户余额</h3>
-        <div class="balance-info">
-            <div>TestCoin (TST) 余额:</div>
-            <div id="tokenBalance" class="balance-value">--</div>
-        </div>
-        <div class="balance-info">
-            <div>BNB 余额:</div>
-            <div id="bnbBalance" class="balance-value">--</div>
-        </div>
-        <button id="refreshBalance" class="button">刷新余额</button>
-    </div>
+        // 简化的ABI（只包含我们需要的方法）
+        const contractABI = [
+            {
+                "inputs": [],
+                "name": "name",
+                "outputs": [{"internalType": "string", "name": "", "type": "string"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"internalType": "address", "name": "account", "type": "address"}],
+                "name": "balanceOf",
+                "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"internalType": "address", "name": "to", "type": "address"},
+                          {"internalType": "uint256", "name": "amount", "type": "uint256"}],
+                "name": "transfer",
+                "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            }
+        ];
 
-    <!-- 代币转账区域 -->
-    <div class="container">
-        <h3 class="section-title">💸 转账功能</h3>
-        <div id="statusMessage"></div>
-        <div class="input-group">
-            <label for="recipientAddress">接收地址:</label>
-            <input type="text" id="recipientAddress" placeholder="输入接收地址">
-        </div>
-        <div class="input-group">
-            <label for="transferAmount">转账数量:</label>
-            <input type="number" id="transferAmount" placeholder="输入转账数量" min="0" step="0.000001">
-        </div>
-        <button id="transferTokens" class="button">转账 TestCoin</button>
-    </div>
+        async function connectWallet() {
+            if (typeof window.ethereum !== 'undefined') {
+                try {
+                    web3 = new Web3(window.ethereum);
+                    await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    const accounts = await web3.eth.getAccounts();
+                    userAddress = accounts[0];
+                    
+                    document.getElementById('walletStatus').textContent = `已连接: ${userAddress}`;
+                    document.getElementById('connectWallet').textContent = '钱包已连接';
+                    
+                    // 自动测试合约
+                    await testContract();
+                    
+                } catch (error) {
+                    document.getElementById('walletStatus').textContent = `连接失败: ${error.message}`;
+                }
+            } else {
+                document.getElementById('walletStatus').textContent = '请安装MetaMask';
+            }
+        }
 
-    <!-- 质押功能区域 -->
-    <div class="container">
-        <h3 class="section-title">🔒 质押功能</h3>
-        
-        <!-- 质押信息显示 -->
-        <div id="stakingInfoDisplay" class="staking-info hidden">
-            <h4>当前质押信息</h4>
-            <div id="stakingDetails"></div>
-            <button id="claimRewards" class="button">领取奖励</button>
-            <button id="unstakeTokens" class="button danger">解除质押</button>
-        </div>
+        async function testContract() {
+            if (!web3 || !userAddress) {
+                document.getElementById('contractStatus').textContent = '请先连接钱包';
+                return;
+            }
 
-        <!-- 质押操作 -->
-        <div class="input-group">
-            <label for="stakeAmount">质押数量 (TST):</label>
-            <input type="number" id="stakeAmount" placeholder="输入质押数量" min="0" step="1">
-        </div>
-        <div class="input-group">
-            <label for="lockPeriod">锁定期限 (天):</label>
-            <input type="number" id="lockPeriod" placeholder="输入锁定天数" min="1" value="30">
-        </div>
-        <button id="stakeTokens" class="button">开始质押</button>
-        
-        <!-- 说明文字 -->
-        <div style="margin-top: 15px; padding: 15px; background-color: #f8f9fa; border-radius: 5px; font-size: 14px; color: #666;">
-            <strong>质押说明：</strong><br>
-            • 年化收益率：10%<br>
-            • 锁定期内无法解除质押<br>
-            • 可以随时领取奖励而不解除质押<br>
-            • 质押期间代币将被锁定
-        </div>
-    </div>
+            try {
+                // 检查网络
+                const networkId = await web3.eth.net.getId();
+                if (networkId !== 97) {
+                    document.getElementById('contractStatus').textContent = `错误网络! 当前: ${networkId}, 需要: 97`;
+                    return;
+                }
 
-    <!-- 合约信息显示 -->
-    <div class="container">
-        <h3 class="section-title">📋 合约信息</h3>
-        <div style="font-size: 14px; color: #666;">
-            <div><strong>合约地址:</strong> <span id="contractAddress">0xB0eeD26aE6F65aBa165BCBF0229568959f968A7B</span></div>
-            <div><strong>网络:</strong> BNBSmartChain Testnet</div>
-            <div><strong>代币符号:</strong> TST</div>
-            <div><strong>总发行量:</strong> 10,000,000 TST</div>
-        </div>
-    </div>
+                // 初始化合约
+                contract = new web3.eth.Contract(contractABI, contractAddress);
+                
+                // 测试合约连接
+                const name = await contract.methods.name().call();
+                document.getElementById('contractStatus').textContent = `合约正常: ${name}`;
+                
+                // 自动获取余额
+                await getBalance();
+                
+            } catch (error) {
+                document.getElementById('contractStatus').textContent = `合约错误: ${error.message}`;
+            }
+        }
 
-    <script src="app.js"></script>
+        async function getBalance() {
+            if (!contract || !userAddress) {
+                document.getElementById('balanceStatus').textContent = '请先测试合约';
+                return;
+            }
+
+            try {
+                const balanceWei = await contract.methods.balanceOf(userAddress).call();
+                const balanceTST = web3.utils.fromWei(balanceWei, 'ether');
+                document.getElementById('balanceStatus').textContent = `${balanceTST} TST`;
+            } catch (error) {
+                document.getElementById('balanceStatus').textContent = `余额错误: ${error.message}`;
+            }
+        }
+
+        async function transferTokens() {
+            if (!contract || !userAddress) {
+                document.getElementById('transferStatus').textContent = '请先连接和测试合约';
+                return;
+            }
+
+            const recipient = document.getElementById('recipientAddress').value;
+            const amount = document.getElementById('transferAmount').value;
+
+            try {
+                const weiAmount = web3.utils.toWei(amount, 'ether');
+                
+                const tx = await contract.methods.transfer(recipient, weiAmount).send({
+                    from: userAddress,
+                    gas: 200000
+                });
+                
+                document.getElementById('transferStatus').textContent = `转账成功: ${tx.transactionHash}`;
+                
+                // 刷新余额
+                setTimeout(getBalance, 2000);
+                
+            } catch (error) {
+                document.getElementById('transferStatus').textContent = `转账失败: ${error.message}`;
+            }
+        }
+
+        // 绑定事件
+        document.getElementById('connectWallet').addEventListener('click', connectWallet);
+        document.getElementById('testContract').addEventListener('click', testContract);
+        document.getElementById('getBalance').addEventListener('click', getBalance);
+        document.getElementById('transferTokens').addEventListener('click', transferTokens);
+    </script>
 </body>
 </html>
