@@ -593,11 +593,12 @@ async function initializeContract() {
             return;
         }
         
-        if (contractAddress !== "0x0000000000000000000000000000000000000000") {
-           contract = new web3.eth.Contract(contractABI, contractAddress);
-        } else {
-           showMessage('请先部署合约并获得合约地址！', 'error');
-        }
+        // 初始化合约
+        contract = new web3.eth.Contract(contractABI, contractAddress);
+        
+        // 测试合约连接
+        await contract.methods.name().call();
+        
     } catch (error) {
         console.error('初始化合约失败:', error);
         showMessage('初始化合约失败: ' + error.message, 'error');
