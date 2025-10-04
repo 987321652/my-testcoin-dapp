@@ -5,6 +5,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的测试DApp - TestCoin</title>
     <script src="https://cdn.jsdelivr.net/npm/web3@1.8.0/dist/web3.min.js"></script>
+    <!-- 立即修复合约初始化问题的脚本 -->
+    <script>
+        // 强制修复合约初始化的内联脚本
+        window.addEventListener('load', function() {
+            console.log('开始强制修复合约初始化...');
+            
+            // 等待2秒确保所有脚本加载完成
+            setTimeout(function() {
+                // 如果存在web3实例，强制重新初始化合约
+                if (typeof web3 !== 'undefined' && web3 && window.ethereum) {
+                    console.log('检测到web3，尝试修复合约连接...');
+                    
+                    // 重新创建web3实例
+                    const newWeb3 = new Web3(window.ethereum);
+                    
+                    try {
+                        // 强制初始化合约（不使用contract变量）
+                        const contractAddress = "0xB0eeD26aE6F65aBa165BCBF0229568959f968A7B";
+                        const simpleABI = [
+                            {"inputs": [], "name": "name", "outputs": [{"internalType": "string", "name": "", "type": "string"}], "stateMutability": "view", "type": "function"},
+                            {"inputs": [{"internalType": "address", "name": "account", "type": "address"}], "name": "balanceOf", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"},
+                            {"inputs": [{"internalType": "address", "name": "to", "type": "address"}, {"internalType": "uint256", "name": "amount", "type": "uint256"}], "name": "transfer", "outputs": [{"internalType": "bool", "name": "", "type": "bool"}], "stateMutability": "nonpayable", "type": "function"}
+                        ];
+                        
+                        const workingContract = new newWeb3.eth.Contract(simpleABI, contractAddress);
+                        
+                        // 测试合约连接
+                        workingContract.methods.name().call().then(function(name) {
+                            console.log('合约名称:', name);
+                            document.querySelector('.balance-value').textContent = '合约已连接: ' + name;
+                        }).catch(function(error) {
+                            console.error('合约连接失败:', error);
+                        });
+                        
+                    } catch (error) {
+                        console.error('连接修复失败:', error);
+                    }
+                }
+            }, 2000);
+        });
+    </script>
     <style>
         body {
             font-family: Arial, sans-serif;
